@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yt-summarizer-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yt-summarizer-api
+  template:
+    metadata:
+      labels:
+        app: yt-summarizer-api
+    spec:
+      containers:
+        - name: yt-summarizer-api
+          image: docker.io/terakael/jqiwkz:20250415_05
+          ports:
+            - containerPort: 5000
+          command: ["hypercorn"]
+          args: ["-w", "1", "-b", "0.0.0.0:5000", "app:app"]
+          env:
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gemini-api-key
+                  key: key
