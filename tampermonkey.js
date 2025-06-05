@@ -7,7 +7,7 @@
 // @match        *://*.youtube.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
-// @connect      yt-summarizer.lan
+// @connect      yt-summarizer-api-service-80-fpda-stg.jpe2-caas1-dev1.caas.jpe2b.r-local.net
 // @require      https://cdn.jsdelivr.net/npm/marked/marked.min.js
 // @require      https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js
 // @run-at       document-idle
@@ -25,7 +25,7 @@
     const LOADING_INDICATOR_ID = CUSTOM_ELEMENT_ID + '-loading-indicator';
     const PLAYER_SELECTOR = 'ytd-player';
     const LOG_PREFIX = "[Dan's TL;DR]";
-    const API_BASE_URL = 'http://yt-summarizer.lan';
+    const API_BASE_URL = 'http://yt-summarizer-api-service-80-fpda-stg.jpe2-caas1-dev1.caas.jpe2b.r-local.net';
 
     const SUMMARY_CONTENT_ID = CUSTOM_ELEMENT_ID + '-summary-content';
 
@@ -547,7 +547,7 @@
             if (!parentElement) { console.error(`${LOG_PREFIX} Could not find parent of ${referenceNodeSelector}.`); return; }
             const customElement = document.createElement('div');
             customElement.id = CUSTOM_ELEMENT_ID;
-            customElement.setAttribute('data-is-expanded', 'false');
+            customElement.setAttribute('data-is-expanded', 'true');
             const headingContainer = document.createElement('div');
             headingContainer.id = HEADING_CONTAINER_ID;
             const heading = document.createElement('h3');
@@ -557,10 +557,11 @@
             toggleIndicator.textContent = '+';
             headingContainer.appendChild(heading);
             headingContainer.appendChild(toggleIndicator);
+            toggleIndicator.textContent = '-';
             customElement.appendChild(headingContainer);
             const contentWrapper = document.createElement('div');
             contentWrapper.id = CONTENT_WRAPPER_ID;
-            contentWrapper.style.display = 'none';
+            contentWrapper.style.display = 'block';
             const responseArea = document.createElement('div');
             responseArea.id = API_RESPONSE_AREA_ID;
             contentWrapper.appendChild(responseArea);
@@ -591,24 +592,21 @@
                     contentWrapper.style.display = 'block';
                     customElement.setAttribute('data-is-expanded', 'true');
                     toggleIndicator.textContent = '-';
-                    if (!summaryGenerated) {
-                        const currentVideoURL = window.location.href;
-                        if (currentVideoURL.includes('/watch?v=')) {
-                            const responseAreaElem = document.getElementById(API_RESPONSE_AREA_ID);
-                            if (responseAreaElem) fetchSummaryAndUpdateUI(currentVideoURL, responseAreaElem);
-                        } else {
-                            const responseAreaElem = document.getElementById(API_RESPONSE_AREA_ID);
-                            if (responseAreaElem) {
-                                clearElementChildren(responseAreaElem);
-                                const orangeSpan = document.createElement('span');
-                                orangeSpan.style.color = 'orange';
-                                orangeSpan.textContent = 'Not a valid video watch page.';
-                                responseAreaElem.appendChild(orangeSpan);
-                            }
-                            if (chatInput) { chatInput.disabled = true; chatInput.placeholder = 'Not a video page.'; chatInput.value = ''; }
-                            if (sendButton) sendButton.disabled = true;
-                            if (chatContainer) chatContainer.style.display = 'none';
+                    // The summary fetching logic is now handled automatically on injection.
+                    // This click listener primarily handles expand/collapse.
+                    const currentVideoURL = window.location.href;
+                    if (!currentVideoURL.includes('/watch?v=')) {
+                        const responseAreaElem = document.getElementById(API_RESPONSE_AREA_ID);
+                        if (responseAreaElem) {
+                            clearElementChildren(responseAreaElem);
+                            const orangeSpan = document.createElement('span');
+                            orangeSpan.style.color = 'orange';
+                            orangeSpan.textContent = 'Not a valid video watch page.';
+                            responseAreaElem.appendChild(orangeSpan);
                         }
+                        if (chatInput) { chatInput.disabled = true; chatInput.placeholder = 'Not a video page.'; chatInput.value = ''; }
+                        if (sendButton) sendButton.disabled = true;
+                        if (chatContainer) chatContainer.style.display = 'none';
                     }
                 }
                 debouncedSetSummaryHeight();
@@ -622,6 +620,16 @@
             });
             parentElement.insertBefore(customElement, referenceNode);
             console.log(`${LOG_PREFIX} Custom element injected.`);
+
+            // Automatically fetch summary if on a YouTube watch page and not already generated
+            const currentVideoURL = window.location.href;
+            if (currentVideoURL.includes('/watch?v=') && !summaryGenerated) {
+                const responseAreaElem = document.getElementById(API_RESPONSE_AREA_ID);
+                if (responseAreaElem) {
+                    fetchSummaryAndUpdateUI(currentVideoURL, responseAreaElem);
+                }
+            }
+
             observePlayerForHeightChanges();
         }, 40, 250);
     }
@@ -887,9 +895,9 @@
 
                         if (responseArea) clearElementChildren(responseArea);
                         summaryGenerated = false; originalSummaryContent = ''; messageHistory = [];
-                        if (contentWrapper) contentWrapper.style.display = 'none';
-                        if (toggleIndicator) toggleIndicator.textContent = '+';
-                        existingElement.setAttribute('data-is-expanded', 'false');
+                        if (contentWrapper) contentWrapper.style.display = 'block';
+                        if (toggleIndicator) toggleIndicator.textContent = '-';
+                        existingElement.setAttribute('data-is-expanded', 'true');
 
                         if (chatInput) { chatInput.value = ''; chatInput.disabled = true; chatInput.placeholder = 'Summary not available...'; }
                         if (sendButton) sendButton.disabled = true;
@@ -897,6 +905,7 @@
 
                         console.log(`${LOG_PREFIX} Reset content for new video page.`);
                         observePlayerForHeightChanges(); // Re-observe for new page layout
+                        fetchSummaryAndUpdateUI(url, responseArea);
                     } else {
                         setTimeout(injectCustomElement, 500);
                     }
