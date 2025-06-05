@@ -495,6 +495,8 @@
         const buffer = 10;
         const calculatedMaxHeight = playerHeight - nonScrollingContentHeight - buffer;
         responseArea.style.maxHeight = `${Math.max(50, calculatedMaxHeight)}px`;
+
+        responseArea.scrollTop = responseArea.scrollHeight;
     }
     const debouncedSetSummaryHeight = debounce(setSummaryHeight, 250);
     function observePlayerForHeightChanges() {
@@ -581,6 +583,7 @@
             chatContainer.appendChild(chatInput);
             chatContainer.appendChild(sendButton);
             contentWrapper.appendChild(chatContainer);
+            responseArea.scrollTop = responseArea.scrollHeight;
             customElement.appendChild(contentWrapper);
             headingContainer.addEventListener('click', () => {
                 const isExpanded = customElement.getAttribute('data-is-expanded') === 'true';
