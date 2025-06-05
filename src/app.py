@@ -1,8 +1,10 @@
 from quart import Quart, request, jsonify
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
-import google.generativeai as genai
-import os
+from llm_providers import get_llm_provider
+
+# Initialize LLM provider
+llm_provider = get_llm_provider()
 
 SYSTEM_PROMPT = """You are an expert content summarizer. Your task is to analyze the provided YouTube video transcript and generate a comprehensive "Too Long; Didn't Read" (TL;DR) summary.
 
@@ -58,7 +60,7 @@ Effective remote work demands **discipline** and strategic planning for optimal 
 **Outcome:** Increased autonomy and productivity through conscious effort to prevent burnout.
 ```
 
-You will be provided with the video transcript. Your response should be ONLY the TL;DR, formatted with Markdown."""
+You will be provided with the video transcript. Your response should be ONLY the TL;DR, formatted as Markdown (do NOT include the code fences)."""
 
 app = Quart(__name__)
 
@@ -80,25 +82,19 @@ async def summarize():
         video_id = video_url.split("v=")[1].split("&")[0]
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
 
-        # Configure Gemini
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        model = genai.GenerativeModel("gemini-2.0-flash-exp")
-
         # Combine transcript text
         transcript_text = " ".join([entry["text"] for entry in transcript])
 
-        # Get summary from Gemini
-        response = model.generate_content(
-            contents=f"{SYSTEM_PROMPT}\n\nThe transcript:\n\n```{transcript_text}\n```",
+        # Get summary from configured LLM provider
+        summary = llm_provider.generate_content(
+            SYSTEM_PROMPT, f"The transcript:\n\n```{transcript_text}\n```"
         )
 
-        return jsonify({"video_id": video_id, "summary": response.text})
+        return jsonify({"video_id": video_id, "summary": summary})
 
     except (TranscriptsDisabled, NoTranscriptFound):
         return jsonify({"error": "Transcript not available for this video"}), 404
     except Exception as e:
-        if "GEMINI_API_KEY" not in os.environ:
-            return jsonify({"error": "Gemini API key not configured"}), 500
         return jsonify({"error": str(e)}), 500
 
 

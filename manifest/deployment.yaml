@@ -14,14 +14,27 @@ spec:
     spec:
       containers:
         - name: yt-summarizer-api
-          image: docker.io/terakael/jqiwkz:20250605_05
+          image: docker.io/terakael/jqiwkz:20250605_09
           ports:
             - containerPort: 5000
           command: ["hypercorn"]
           args: ["-w", "1", "-b", "0.0.0.0:5000", "app:app"]
           env:
+            - name: LLM_PROVIDER
+              value: gemini
             - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: gemini-api-key
                   key: key
+            - name: GEMINI_MODEL
+              value: gemini-2.0-flash-exp
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: chutes-api-key
+                  key: key
+            - name: OPENAI_BASE_URL
+              value: https://llm.chutes.ai/v1
+            - name: OPENAI_MODEL
+              value: deepseek-ai/DeepSeek-V3-0324
