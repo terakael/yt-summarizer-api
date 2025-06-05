@@ -1,3 +1,4 @@
+import re
 from quart import Quart, request, jsonify
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
@@ -89,6 +90,10 @@ async def summarize():
         summary = llm_provider.generate_content(
             SYSTEM_PROMPT, f"The transcript:\n\n```{transcript_text}\n```"
         )
+
+        # Remove code fences if present
+        if summary.startswith("```") and summary.endswith("```"):
+            summary = re.sub(r"^```.*?\n|\n```$", "", summary, flags=re.DOTALL)
 
         return jsonify({"video_id": video_id, "summary": summary})
 
