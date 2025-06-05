@@ -35,7 +35,7 @@ The ultimate goal of this TL;DR is to give a reader a complete understanding of 
 
 **Example of what TO do (assuming the video's content supports this, demonstrating *concise* summary with *effective* Markdown):**
 
-```markdown
+<EXAMPLE>
 # Remote Work Efficiency
 
 Effective remote work demands **discipline** and strategic planning for optimal productivity.
@@ -50,6 +50,6 @@ Effective remote work demands **discipline** and strategic planning for optimal 
 2.  **Conferencing:** Zoom, Google Meet for meetings. *Avoid excessive virtual calls.*
 
 **Outcome:** Increased autonomy and productivity through conscious effort to prevent burnout.
-```
+</EXAMPLE>
 
-You will be provided with the video transcript. Your response should be ONLY the TL;DR, formatted as Markdown.
+You will be provided with the video transcript. Your response should be ONLY the TL;DR, formatted as Markdown.  Do NOT use code fences.
