@@ -1,61 +1,55 @@
-# YouTube Summarizer API
+# YouTube Video Summarizer & Q&A
 
-A Quart-based API that summarizes YouTube videos using Google's Gemini AI.
+This project offers a solution for summarizing YouTube videos and conducting interactive Q&A sessions. It uses Large Language Models (LLMs) to process video content and generate summaries and responses.
 
-## Requirements
-- Python 3.10+
-- UV package manager (recommended)
+## Purpose & Motivation
 
-## Installation
-1. Create virtual environment:
-```bash
-uv venv .venv
-```
+The primary goal of this project is to enhance the YouTube viewing experience by allowing users to quickly grasp the core content of videos without needing to watch them in their entirety. It also facilitates deeper engagement by providing an interactive Q&A mechanism, enabling users to extract specific information from video content efficiently.
 
-2. Activate virtual environment:
-```bash
-source .venv/bin/activate
-```
+## Features
 
-3. Install dependencies:
-```bash
-uv pip install -r requirements.txt
-```
+*   **Transcript Extraction:** Automatically fetches transcripts for YouTube videos.
+*   **Video Summarization:** Generates concise, LLM-powered summaries.
+*   **Interactive Q&A:** Enables users to ask questions about video content, with LLMs providing answers based on transcripts and chat history.
+*   **Streaming Responses:** Summaries and Q&A responses are streamed in real-time for a dynamic user experience.
+*   **Browser Integration:** A browser script injects a user interface directly into YouTube pages for easy access.
 
-4. Install compatible Werkzeug version:
-```bash
-uv pip install "werkzeug<3.0.0"
-```
+## Technologies Used
 
-## Configuration
-Set required environment variables:
-```bash
-export GEMINI_API_KEY=your_api_key_here
-```
+### Backend
+*   **Web Framework:** Used for building the API.
+*   **Transcript Fetching:** A library for reliable YouTube video transcript retrieval.
+*   **LLM Integration:** Connects with leading LLM services for content generation.
+*   **ASGI Server:** Runs the backend application efficiently.
 
-## Running the API
-```bash
-python main.py
-```
+### Frontend
+*   **Browser Extension Platform:** Injects custom UI and functionality into web pages.
+*   **Markdown Rendering:** Parses and displays markdown content within the browser.
+*   **HTML Sanitization:** Ensures security and integrity of rendered content.
 
-## API Endpoints
-- `POST /summarize` - Summarize a YouTube video
-  - Request body: `{"url": "youtube_video_url"}`
-  - Response: 
-    ```json
-    {
-      "video_id": "extracted_id",
-      "summary": "generated_summary"
-    }
-    ```
+### Infrastructure
+*   **Containerization:** Used for packaging the backend application, ensuring consistent environments and easy deployment.
+*   **Orchestration:** Manages the deployment and scaling of the backend application, enabling high availability.
+*   **Configuration Management:** Handles sensitive settings like LLM API keys and model configurations.
 
-## Error Handling
-- 400: Missing URL parameter
-- 404: Transcript not available
-- 500: Server error (missing API key or other issues)
+## Architecture & Workflow
 
-## Example Usage
-```bash
-curl -X POST http://localhost:5000/summarize \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}'
+The system operates through a client-server architecture with a focus on real-time interaction:
+
+1.  **UI Injection:** A browser script loads and injects a custom user interface element when a user visits a YouTube video page.
+2.  **Summary Request:** The user initiates a summary request via the injected UI. The browser script sends a request to the backend, including the YouTube video URL.
+3.  **Transcript & LLM Processing:** The backend extracts the video ID, fetches the transcript, and sends it to the configured LLM with a summarization prompt.
+4.  **Streamed Summary:** The LLM's summary is streamed back to the browser script using Server-Sent Events (SSE). The frontend receives and renders these chunks in real-time, updating the UI dynamically.
+5.  **Q&A Interaction:** For questions, the user types into the chat interface. The browser script sends a request to the backend, providing the video URL, original summary, and chat history.
+6.  **Contextual Q&A:** The backend processes this request, potentially re-fetching the transcript, and sends the relevant context (transcript, summary, chat history, question) to the LLM with a Q&A prompt.
+7.  **Streamed Answer:** The LLM's answer is streamed back to the browser script and rendered in the chat UI, maintaining an interactive conversation flow.
+8.  **Scalable Deployment:** The backend application is designed for containerized deployment, ensuring robust, scalable, and highly available operation.
+
+## How to Use / Get Started
+
+To use this service:
+
+1.  **Backend Deployment:** Deploy the backend application (containerized) to a suitable environment or run it locally. Ensure necessary environment variables for LLM API keys and models are configured.
+2.  **Browser Script:** Install the browser script in your browser using a compatible extension. This script will inject the necessary UI onto YouTube pages.
+
+Once both components are set up, navigate to any YouTube video, and the summarization and Q&A features will be available directly on the page.
