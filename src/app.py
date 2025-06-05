@@ -1,14 +1,29 @@
 import json
+import logging
+import sys
 
 # import re # re is no longer needed for summary cleaning in streaming
 import os
 import asyncio  # Added for asyncio.to_thread
 from quart import Quart, request, jsonify, Response  # Response added
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api._errors import (
+    TranscriptsDisabled,
+    NoTranscriptFound,
+)
 from llm_providers import (
     get_llm_provider,
 )  # Ensure this points to your llm_providers.py
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(module)s:%(funcName)s:%(lineno)d - %(message)s"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 llm_provider = get_llm_provider()
 
@@ -38,13 +53,16 @@ if not os.path.isdir(prompts_dir):
 prompts = {name: read_prompt(name) for name in ["ask", "summarize"]}
 app = Quart(__name__)
 
-async def fetch_transcript_with_retries(video_id, logger, total_attempts=3, initial_delay_seconds=2):
+
+async def fetch_transcript_with_retries(
+    video_id, logger, total_attempts=3, initial_delay_seconds=2
+):
     """
     Fetches YouTube transcript with retries and exponential backoff.
 
     Args:
         video_id (str): The YouTube video ID.
-        logger: The application logger instance (e.g., app.logger).
+        logger: The application logger instance.
         total_attempts (int): Total number of attempts (e.g., 3 means 1 initial + 2 retries).
         initial_delay_seconds (int): Initial delay in seconds for backoff before the first retry.
 
@@ -52,7 +70,9 @@ async def fetch_transcript_with_retries(video_id, logger, total_attempts=3, init
         tuple: (transcript_list, None) on success.
                (None, error_event_string) on failure, where error_event_string is SSE formatted.
     """
-    num_attempts_to_make = max(1, total_attempts) # Ensure at least one attempt
+    num_attempts_to_make = max(
+        1, total_attempts
+    )  # Ensure at least one attempt
 
     for attempt_num_zero_based in range(num_attempts_to_make):
         current_attempt_one_based = attempt_num_zero_based + 1
@@ -67,45 +87,55 @@ async def fetch_transcript_with_retries(video_id, logger, total_attempts=3, init
             transcript_list = await asyncio.to_thread(
                 YouTubeTranscriptApi.get_transcript, video_id
             )
-            logger.info(f"Successfully fetched transcript for {video_id} on attempt {current_attempt_one_based}")
+            logger.info(
+                f"Successfully fetched transcript for {video_id} on attempt {current_attempt_one_based}"
+            )
             return transcript_list, None  # Success
 
         except (TranscriptsDisabled, NoTranscriptFound) as e:
-            error_message = 'Transcript not available for this video.'
+            error_message = "Transcript not available for this video."
             status_code = 404
             if isinstance(e, NoTranscriptFound):
-                error_message = f'No transcript found for video {video_id}. It might be disabled or not generated yet.'
+                error_message = f"No transcript found for video {video_id}. It might be disabled or not generated yet."
             elif isinstance(e, TranscriptsDisabled):
-                error_message = f'Transcripts are disabled for video {video_id}.'
-            
+                error_message = (
+                    f"Transcripts are disabled for video {video_id}."
+                )
+
             logger.warning(
                 f"Transcript not available for {video_id}: {error_message} (Attempt {current_attempt_one_based})"
             )
             error_event = f"event: error\ndata: {json.dumps({'error': error_message, 'status_code': status_code})}\n\n"
-            return None, error_event # Definitive error, no more retries
+            return None, error_event  # Definitive error, no more retries
 
-        except Exception as e:  # Catch other (potentially intermittent) transcript fetching errors
+        except (
+            Exception
+        ) as e:  # Catch other (potentially intermittent) transcript fetching errors
             logger.warning(
                 f"Attempt {current_attempt_one_based}/{num_attempts_to_make} failed for {video_id}: {str(e)}"
             )
-            if attempt_num_zero_based == num_attempts_to_make - 1:  # This was the last attempt
+            if (
+                attempt_num_zero_based == num_attempts_to_make - 1
+            ):  # This was the last attempt
                 logger.error(
                     f"Error fetching transcript for {video_id} after {num_attempts_to_make} attempts: {str(e)}"
                 )
                 error_event = f"event: error\ndata: {json.dumps({'error': f'Error fetching transcript after {num_attempts_to_make} attempts: {str(e)}', 'status_code': 500})}\n\n"
-                return None, error_event # Retries exhausted
-            
+                return None, error_event  # Retries exhausted
+
             # Calculate delay for the next retry (exponential backoff)
             # Delay = initial_delay * (2 ^ number_of_previous_failures)
             # Here, attempt_num_zero_based is 0 for the first try, 1 for the second, etc.
             # So, 2 ** attempt_num_zero_based is correct for the delay *before* the next attempt.
-            delay = initial_delay_seconds * (2 ** attempt_num_zero_based)
+            delay = initial_delay_seconds  # * (2**attempt_num_zero_based)
             logger.info(f"Retrying in {delay} seconds...")
             await asyncio.sleep(delay)
-    
+
     # Fallback: This should ideally not be reached if num_attempts_to_make >= 1,
     # as all outcomes (success, definitive error, retries exhausted) should return from the loop.
-    logger.error(f"Transcript fetching for {video_id} unexpectedly exited retry loop.")
+    logger.error(
+        f"Transcript fetching for {video_id} unexpectedly exited retry loop."
+    )
     final_error_event = f"event: error\ndata: {json.dumps({'error': 'Unknown error fetching transcript after all retries', 'status_code': 500})}\n\n"
     return None, final_error_event
 
@@ -142,18 +172,24 @@ async def summarize():
                 yield f"event: metadata\ndata: {json.dumps({'video_id': video_id})}\n\n"
 
                 # Fetch transcript using the new helper function
-                transcript_list, error_event = await fetch_transcript_with_retries(
-                    video_id,
-                    app.logger, # Pass your app's logger instance
-                    total_attempts=3,
-                    initial_delay_seconds=2
+                transcript_list, error_event = (
+                    await fetch_transcript_with_retries(
+                        video_id,
+                        logger,  # Pass the new logger instance
+                        total_attempts=9,
+                        initial_delay_seconds=1,
+                    )
                 )
 
-                if error_event: # If fetch_transcript_with_retries returned an error event string
+                if (
+                    error_event
+                ):  # If fetch_transcript_with_retries returned an error event string
                     yield error_event
-                    return # Stop generation
+                    return  # Stop generation
 
-                transcript_text = " ".join([entry["text"] for entry in transcript_list])
+                transcript_text = " ".join(
+                    [entry["text"] for entry in transcript_list]
+                )
 
                 # Stream the summary from LLM
                 async for chunk in llm_provider.generate_content_stream(
@@ -165,7 +201,9 @@ async def summarize():
                 yield f"event: stream_end\ndata: {json.dumps({'message': 'Summary stream finished'})}\n\n"
 
             except Exception as e:
-                app.logger.error(f"Error during /summarize stream generation: {str(e)}")
+                logger.error(
+                    f"Error during /summarize stream generation: {str(e)}"
+                )
                 # Ensure a final error event is sent if an unexpected error occurs mid-stream
                 error_payload = json.dumps(
                     {
@@ -180,7 +218,7 @@ async def summarize():
 
     except Exception as e:
         # Catches errors *before* streaming starts (e.g., bad JSON in request, initial validation)
-        app.logger.error(f"Pre-stream error in /summarize: {str(e)}")
+        logger.error(f"Pre-stream error in /summarize: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
@@ -218,7 +256,10 @@ async def ask_question():
         if (
             not question or len(question.strip()) < 1
         ):  # Reduced minimum length for easier testing
-            return jsonify({"error": "Question must be at least 1 character"}), 422
+            return (
+                jsonify({"error": "Question must be at least 1 character"}),
+                422,
+            )
 
         try:
             video_id = video_url.split("v=")[1].split("&")[0]
@@ -233,18 +274,24 @@ async def ask_question():
             }
             try:
                 # Fetch transcript using the new helper function
-                transcript_list, error_event = await fetch_transcript_with_retries(
-                    video_id,
-                    app.logger, # Pass your app's logger instance
-                    total_attempts=3,
-                    initial_delay_seconds=2
+                transcript_list, error_event = (
+                    await fetch_transcript_with_retries(
+                        video_id,
+                        logger,  # Pass the new logger instance
+                        total_attempts=9,
+                        initial_delay_seconds=1,
+                    )
                 )
 
-                if error_event: # If fetch_transcript_with_retries returned an error event string
+                if (
+                    error_event
+                ):  # If fetch_transcript_with_retries returned an error event string
                     yield error_event
-                    return # Stop generation
+                    return  # Stop generation
 
-                transcript_text = " ".join([entry["text"] for entry in transcript_list])
+                transcript_text = " ".join(
+                    [entry["text"] for entry in transcript_list]
+                )
 
                 user_prompt = f"""
 <TRANSCRIPT>
@@ -272,7 +319,7 @@ async def ask_question():
                 yield f"event: stream_end\ndata: {json.dumps({'message': 'Answer stream finished'})}\n\n"
 
             except Exception as e:
-                app.logger.error(f"Error during /ask stream generation: {str(e)}")
+                logger.error(f"Error during /ask stream generation: {str(e)}")
                 error_payload = json.dumps(
                     {
                         "error": "An unexpected error occurred during streaming.",
@@ -285,12 +332,12 @@ async def ask_question():
 
     except Exception as e:
         # Catches errors *before* streaming starts
-        app.logger.error(f"Pre-stream error in /ask: {str(e)}")
+        logger.error(f"Pre-stream error in /ask: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
 if __name__ == "main":
     # Ensure llm_provider is initialized before app.run
     # This is already done at the global scope.
-    print("Starting Quart app...")
+    logger.info("Starting Quart app...")
     app.run(host="0.0.0.0", port=5000)

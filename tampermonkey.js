@@ -25,6 +25,7 @@
     const LOADING_INDICATOR_ID = CUSTOM_ELEMENT_ID + '-loading-indicator';
     const PLAYER_SELECTOR = 'ytd-player';
     const LOG_PREFIX = "[Dan's TL;DR]";
+    const API_BASE_URL = 'http://yt-summarizer.lan';
 
     const SUMMARY_CONTENT_ID = CUSTOM_ELEMENT_ID + '-summary-content'; // For the summary itself
 
@@ -112,7 +113,6 @@
 
     function streamRequestGmXhr({ url, method, data, onMetadata, onDataChunk, onErrorEvent, onStreamEnd, onXHRError, onXHRTimeout, onXHRLoadEnd }) {
         let sseParser = new SseParser();
-        let lastProcessedLength = 0;
         const xhr = GM_xmlhttpRequest({
             method: method,
             url: url,
@@ -139,48 +139,15 @@
                                 }
                             }
                         }
-
-                        console.log(chunkString, 'received')
                     }
                     if (done) {
                         onXHRLoadEnd(r)
-                        break; // Exit the loop
+                        break;
                     }
                 }
                 console.log('done');
             }
         });
-        // const xhr = GM_xmlhttpRequest({
-        //     method: method,
-        //     url: url,
-        //     headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-        //     data: data ? JSON.stringify(data) : null,
-        //     responseType: 'text',
-        //     onreadystatechange: function (event) {
-        //         if (event.readyState >= 3) { // LOADING or DONE
-        //             const newText = event.responseText.substring(lastProcessedLength);
-        //             lastProcessedLength = event.responseText.length;
-        //             if (newText) {
-        //                 for (const sseEvent of sseParser.parse(newText)) {
-        //                     if (sseEvent.type === 'metadata' && onMetadata) onMetadata(sseEvent.data);
-        //                     else if (sseEvent.type === 'error' && onErrorEvent) onErrorEvent(sseEvent.data);
-        //                     else if (sseEvent.type === 'stream_end' && onStreamEnd) onStreamEnd(sseEvent.data);
-        //                     else if ((sseEvent.type === 'message' || sseEvent.type === 'data') && onDataChunk) {
-        //                         if (sseEvent.data && typeof sseEvent.data.chunk !== 'undefined') {
-        //                             onDataChunk(sseEvent.data);
-        //                         } else {
-        //                             console.warn(`${LOG_PREFIX} Received data event without 'chunk':`, sseEvent);
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //         if (event.readyState === 4 && onXHRLoadEnd) onXHRLoadEnd(event);
-        //     },
-        //     onload: function (response) { /* onreadystatechange handles readyState 4 */ },
-        //     onerror: function (response) { if (onXHRError) onXHRError(response); },
-        //     ontimeout: function () { if (onXHRTimeout) onXHRTimeout(); }
-        // });
         return xhr;
     }
     // --- END: SSE Streaming Logic ---
@@ -267,7 +234,7 @@
 
         console.log(`${LOG_PREFIX} Starting summary stream for ${pageUrl}`);
         currentSummaryXhr = streamRequestGmXhr({
-            url: 'http://yt-summarizer.lan/summarize',
+            url: `${API_BASE_URL}/summarize`,
             method: 'POST',
             data: { url: pageUrl },
             onMetadata: (data) => { /* console.log(`${LOG_PREFIX} Summary metadata:`, data); */ },
@@ -374,7 +341,7 @@
 
         console.log(`${LOG_PREFIX} Starting chat stream for question: "${userQuestion}"`);
         currentChatXhr = streamRequestGmXhr({
-            url: 'http://yt-summarizer.lan/ask',
+            url: `${API_BASE_URL}/ask`,
             method: 'POST',
             data: { url: currentVideoURL, original_summary: originalSummaryContent, history: messageHistory },
             onDataChunk: (data) => {
