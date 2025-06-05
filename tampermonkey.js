@@ -7,7 +7,7 @@
 // @match        *://*.youtube.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
-// @connect      yt-summarizer-api-service-80-fpda-stg.jpe2-caas1-dev1.caas.jpe2b.r-local.net
+// @connect      yt-summarizer.lan
 // @require      https://cdn.jsdelivr.net/npm/marked/marked.min.js
 // @require      https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js
 // @run-at       document-idle
@@ -25,7 +25,7 @@
     const LOADING_INDICATOR_ID = CUSTOM_ELEMENT_ID + '-loading-indicator';
     const PLAYER_SELECTOR = 'ytd-player';
     const LOG_PREFIX = "[Dan's TL;DR]";
-    const API_BASE_URL = 'http://yt-summarizer-api-service-80-fpda-stg.jpe2-caas1-dev1.caas.jpe2b.r-local.net';
+    const API_BASE_URL = 'http://yt-summarizer.lan';
 
     const SUMMARY_CONTENT_ID = CUSTOM_ELEMENT_ID + '-summary-content';
 
