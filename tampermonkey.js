@@ -27,7 +27,7 @@
     const LOG_PREFIX = "[Dan's TL;DR]";
     const API_BASE_URL = 'http://yt-summarizer.lan';
 
-    const SUMMARY_CONTENT_ID = CUSTOM_ELEMENT_ID + '-summary-content'; // For the summary itself
+    const SUMMARY_CONTENT_ID = CUSTOM_ELEMENT_ID + '-summary-content';
 
     let resizeObserver = null;
     let playerHeightMutationObserver = null;
@@ -37,8 +37,8 @@
     let messageHistory = [];
     let summaryHtmlPolicy = null;
 
-    let currentSummaryXhr = null; // To store and potentially abort summary XHR
-    let currentChatXhr = null;   // To store and potentially abort chat XHR
+    let currentSummaryXhr = null;
+    let currentChatXhr = null;
 
     if (typeof trustedTypes !== 'undefined' && trustedTypes.createPolicy) {
         try {
@@ -60,7 +60,6 @@
     }
 
     function waitForElement(selector, callback, maxRetries = 20, interval = 500) {
-        // ... (keep existing implementation)
         let retries = 0;
         const checkInterval = setInterval(() => {
             const element = document.querySelector(selector);
@@ -76,8 +75,6 @@
             }
         }, interval);
     }
-
-    // Removed old retry function as streaming handles retries/errors differently via UI
 
     // --- START: SSE Streaming Logic ---
     function SseParser() {
@@ -153,7 +150,6 @@
     // --- END: SSE Streaming Logic ---
 
 
-    // Helper to render markdown safely into an element
     function renderMarkdownToElement(element, markdownContent) {
         clearElementChildren(element);
         marked.setOptions({ breaks: true, gfm: true });
@@ -173,7 +169,6 @@
         }
     }
 
-    // Helper to parse JSON error from responseText or return snippet
     function tryParseError(responseText) {
         try {
             const errJson = JSON.parse(responseText);
@@ -183,8 +178,7 @@
         }
     }
 
-    // Helper to append a retry button
-    function appendRetryButton(parentElement, ...retryArgs) { // Last arg is the retryCallback
+    function appendRetryButton(parentElement, ...retryArgs) {
         const retryCallback = retryArgs.pop();
         const retryButton = document.createElement('button');
         retryButton.className = 'tldr-retry-button';
@@ -465,14 +459,14 @@
     }
 
 
-    function debounce(func, delay) { /* ... (keep existing) ... */
+    function debounce(func, delay) {
         let timeoutId;
         return function (...args) {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => func.apply(this, args), delay);
         };
     }
-    function setSummaryHeight() { /* ... (keep existing, should work fine) ... */
+    function setSummaryHeight() {
         const playerElement = document.querySelector(PLAYER_SELECTOR);
         const responseArea = document.getElementById(API_RESPONSE_AREA_ID);
         const customElement = document.getElementById(CUSTOM_ELEMENT_ID);
@@ -862,7 +856,7 @@
             injectCustomElement();
         } else {
             const oldElement = document.getElementById(CUSTOM_ELEMENT_ID);
-            if (oldElement) { oldElement.remove(); cleanupObservers(); /* Reset states if any */ }
+            if (oldElement) { oldElement.remove(); cleanupObservers(); }
         }
         new MutationObserver(() => {
             const url = location.href;
