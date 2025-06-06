@@ -408,6 +408,25 @@
         });
     }
 
+    function deleteMessagesFromHistory(messageIndex) {
+        // Remove all messages from the specified index onward
+        messageHistory.splice(messageIndex);
+
+        // Remove corresponding UI elements
+        const responseArea = document.getElementById(API_RESPONSE_AREA_ID);
+        if (!responseArea) return;
+
+        const messages = Array.from(responseArea.querySelectorAll('.tldr-chat-message'));
+        for (let i = messageIndex; i < messages.length; i++) {
+            const message = messages[i];
+            // Remove the message and any separator before it
+            if (message.previousElementSibling?.classList?.contains('tldr-chat-separator')) {
+                message.previousElementSibling.remove();
+            }
+            message.remove();
+        }
+    }
+
     function appendChatMessageToUI(responseArea, markdownContent, role, streamId = null) {
         const summaryDiv = document.getElementById(SUMMARY_CONTENT_ID);
         let needsSeparator = false;
@@ -427,7 +446,25 @@
         const messageDiv = document.createElement('div');
         if (streamId) messageDiv.id = streamId;
         messageDiv.className = `tldr-chat-message tldr-chat-message-${role}`;
+
         renderMarkdownToElement(messageDiv, markdownContent);
+        // Add trash can for user messages
+        if (role === 'user') {
+            const trashCan = document.createElement('span');
+            trashCan.className = 'tldr-trash-can';
+            trashCan.innerText = summaryHtmlPolicy.createHTML('🗑️');
+            trashCan.title = 'Delete this and all following messages';
+            trashCan.addEventListener('click', () => {
+                const messageIndex = messageHistory.findIndex(msg =>
+                    msg.role === 'user' && msg.content === markdownContent
+                );
+                if (messageIndex !== -1) {
+                    deleteMessagesFromHistory(messageIndex);
+                }
+            });
+            messageDiv.appendChild(trashCan);
+        }
+
         responseArea.appendChild(messageDiv);
         responseArea.scrollTop = responseArea.scrollHeight;
         return messageDiv;
@@ -857,8 +894,28 @@
              content: '...'; display: inline-block; vertical-align: bottom;
              animation: tldr-dot-spinner 1.5s infinite steps(6, end);
          }
+        .tldr-chat-message-user {
+            position: relative;
+            padding-right: 30px;
+        }
+        .tldr-trash-can {
+            display: none;
+            cursor: pointer;
+            color: #ff6b6b;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+        }
+        .tldr-chat-message-user:hover .tldr-trash-can {
+            display: block;
+        }
+        .tldr-trash-can:hover {
+            color: #ff0000;
+        }
     `);
-
+    ``
     let lastUrl = '';
     function initialize() {
         console.log(`${LOG_PREFIX} Script initialized (Streaming). Current URL: ${window.location.href}`);

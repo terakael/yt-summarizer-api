@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: yt-summarizer-api
-          image: docker.io/terakael/jqiwkz:20250605_18
+          image: docker.io/terakael/jqiwkz:20250606_06
           ports:
             - containerPort: 5000
           command: ["hypercorn"]

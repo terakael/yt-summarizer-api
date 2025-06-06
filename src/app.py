@@ -70,9 +70,7 @@ async def fetch_transcript_with_retries(
         tuple: (transcript_list, None) on success.
                (None, error_event_string) on failure, where error_event_string is SSE formatted.
     """
-    num_attempts_to_make = max(
-        1, total_attempts
-    )  # Ensure at least one attempt
+    num_attempts_to_make = max(1, total_attempts)  # Ensure at least one attempt
 
     for attempt_num_zero_based in range(num_attempts_to_make):
         current_attempt_one_based = attempt_num_zero_based + 1
@@ -98,9 +96,7 @@ async def fetch_transcript_with_retries(
             if isinstance(e, NoTranscriptFound):
                 error_message = f"No transcript found for video {video_id}. It might be disabled or not generated yet."
             elif isinstance(e, TranscriptsDisabled):
-                error_message = (
-                    f"Transcripts are disabled for video {video_id}."
-                )
+                error_message = f"Transcripts are disabled for video {video_id}."
 
             logger.warning(
                 f"Transcript not available for {video_id}: {error_message} (Attempt {current_attempt_one_based})"
@@ -127,15 +123,13 @@ async def fetch_transcript_with_retries(
             # Delay = initial_delay * (2 ^ number_of_previous_failures)
             # Here, attempt_num_zero_based is 0 for the first try, 1 for the second, etc.
             # So, 2 ** attempt_num_zero_based is correct for the delay *before* the next attempt.
-            delay = initial_delay_seconds  # * (2**attempt_num_zero_based)
+            delay = initial_delay_seconds
             logger.info(f"Retrying in {delay} seconds...")
             await asyncio.sleep(delay)
 
     # Fallback: This should ideally not be reached if num_attempts_to_make >= 1,
     # as all outcomes (success, definitive error, retries exhausted) should return from the loop.
-    logger.error(
-        f"Transcript fetching for {video_id} unexpectedly exited retry loop."
-    )
+    logger.error(f"Transcript fetching for {video_id} unexpectedly exited retry loop.")
     final_error_event = f"event: error\ndata: {json.dumps({'error': 'Unknown error fetching transcript after all retries', 'status_code': 500})}\n\n"
     return None, final_error_event
 
@@ -172,13 +166,11 @@ async def summarize():
                 yield f"event: metadata\ndata: {json.dumps({'video_id': video_id})}\n\n"
 
                 # Fetch transcript using the new helper function
-                transcript_list, error_event = (
-                    await fetch_transcript_with_retries(
-                        video_id,
-                        logger,  # Pass the new logger instance
-                        total_attempts=9,
-                        initial_delay_seconds=1,
-                    )
+                transcript_list, error_event = await fetch_transcript_with_retries(
+                    video_id,
+                    logger,  # Pass the new logger instance
+                    total_attempts=100,
+                    initial_delay_seconds=1,
                 )
 
                 if (
@@ -187,9 +179,7 @@ async def summarize():
                     yield error_event
                     return  # Stop generation
 
-                transcript_text = " ".join(
-                    [entry["text"] for entry in transcript_list]
-                )
+                transcript_text = " ".join([entry["text"] for entry in transcript_list])
 
                 # Stream the summary from LLM
                 async for chunk in llm_provider.generate_content_stream(
@@ -201,9 +191,7 @@ async def summarize():
                 yield f"event: stream_end\ndata: {json.dumps({'message': 'Summary stream finished'})}\n\n"
 
             except Exception as e:
-                logger.error(
-                    f"Error during /summarize stream generation: {str(e)}"
-                )
+                logger.error(f"Error during /summarize stream generation: {str(e)}")
                 # Ensure a final error event is sent if an unexpected error occurs mid-stream
                 error_payload = json.dumps(
                     {
@@ -274,13 +262,11 @@ async def ask_question():
             }
             try:
                 # Fetch transcript using the new helper function
-                transcript_list, error_event = (
-                    await fetch_transcript_with_retries(
-                        video_id,
-                        logger,  # Pass the new logger instance
-                        total_attempts=9,
-                        initial_delay_seconds=1,
-                    )
+                transcript_list, error_event = await fetch_transcript_with_retries(
+                    video_id,
+                    logger,  # Pass the new logger instance
+                    total_attempts=100,
+                    initial_delay_seconds=1,
                 )
 
                 if (
@@ -289,9 +275,7 @@ async def ask_question():
                     yield error_event
                     return  # Stop generation
 
-                transcript_text = " ".join(
-                    [entry["text"] for entry in transcript_list]
-                )
+                transcript_text = " ".join([entry["text"] for entry in transcript_list])
 
                 user_prompt = f"""
 <TRANSCRIPT>

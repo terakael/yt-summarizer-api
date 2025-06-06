@@ -6,6 +6,7 @@ cachetools==5.5.2
 certifi==2025.1.31
 charset-normalizer==3.4.1
 click==8.1.8
+defusedxml==0.7.1
 distro==1.9.0
 google-ai-generativelanguage==0.4.0
 google-api-core==2.24.2
@@ -44,4 +45,4 @@ typing-inspection==0.4.1
 urllib3==2.4.0
 werkzeug==2.3.8
 wsproto==1.2.0
-youtube-transcript-api==0.6.1
+youtube-transcript-api==1.0.3
