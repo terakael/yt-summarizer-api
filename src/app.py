@@ -6,7 +6,7 @@ import os
 import asyncio
 from quart import Quart, request, jsonify, Response
 from llm_providers import get_llm_provider
-from transcripts import fetch_transcript
+from transcripts import fetch_transcript, TranscriptNotFoundError
 from cachetools import TTLCache, cached
 
 # Configure logging
@@ -94,13 +94,20 @@ async def fetch_transcript_with_retries(
             )
             return transcript_list, None  # Success
 
+        except TranscriptNotFoundError as e:
+            logger.error(
+                f"Transcript does not exist for {video_id}, failing immediately"
+            )
+            error_event = f"event: error\ndata: {json.dumps({'error': str(e), 'status_code': 404})}\n\n"
+            return None, error_event
+
         except Exception as e:
             logger.warning(
                 f"Attempt {current_attempt_one_based}/{num_attempts_to_make} failed for {video_id}: {str(e)}"
             )
-            if (
-                attempt_num_zero_based == num_attempts_to_make - 1
-            ):  # This was the last attempt
+
+            if attempt_num_zero_based == num_attempts_to_make - 1:
+                # This was the last attempt
                 logger.error(
                     f"Error fetching transcript for {video_id} after {num_attempts_to_make} attempts: {str(e)}"
                 )

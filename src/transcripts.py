@@ -4,6 +4,15 @@ import json
 from googleapiclient.discovery import build
 import os
 
+
+class TranscriptNotFoundError(Exception):
+    """Raised when a requested transcript cannot be found for a video."""
+
+    def __init__(self, video_id: str):
+        self.video_id = video_id
+        super().__init__(f"Requested transcript does not exist for video: {video_id}")
+
+
 # --- Configuration ---
 # IMPORTANT: Replace '<YOUR-YOUTUBE-API-KEY>' with your actual YouTube Data API Key.
 # It's highly recommended to set this as an environment variable:
@@ -206,14 +215,10 @@ def _get_subtitles_from_innertube(
             "initialSegments"
         ]
     except (KeyError, IndexError) as e:
-        raise Exception(
-            f"Could not parse transcript response for video {video_id}. "
-            f"Response structure might have changed or transcript is missing. Error: {e}. "
-            f"Full response keys: {response_data.keys()}"
-        )
+        raise TranscriptNotFoundError(video_id)
 
     if not initial_segments:
-        raise Exception(f"Requested transcript does not exist for video: {video_id}")
+        raise TranscriptNotFoundError(video_id)
 
     output = []
     for segment in initial_segments:
