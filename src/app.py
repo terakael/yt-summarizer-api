@@ -164,7 +164,7 @@ async def summarize():
                 transcript_list, error_event = await fetch_transcript_with_retries(
                     video_id,
                     logger,  # Pass the new logger instance
-                    total_attempts=100,
+                    total_attempts=3,
                     initial_delay_seconds=1,
                 )
 
@@ -260,7 +260,7 @@ async def ask_question():
                 transcript_list, error_event = await fetch_transcript_with_retries(
                     video_id,
                     logger,  # Pass the new logger instance
-                    total_attempts=100,
+                    total_attempts=3,
                     initial_delay_seconds=1,
                 )
 
