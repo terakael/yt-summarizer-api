@@ -2,18 +2,12 @@ import json
 import logging
 import sys
 
-# import re # re is no longer needed for summary cleaning in streaming
 import os
-import asyncio  # Added for asyncio.to_thread
-from quart import Quart, request, jsonify, Response  # Response added
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import (
-    TranscriptsDisabled,
-    NoTranscriptFound,
-)
-from llm_providers import (
-    get_llm_provider,
-)  # Ensure this points to your llm_providers.py
+import asyncio
+from quart import Quart, request, jsonify, Response
+from llm_providers import get_llm_provider
+from transcripts import fetch_transcript
+from cachetools import TTLCache, cached
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -26,6 +20,13 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 llm_provider = get_llm_provider()
+
+API_CACHE_MAX_SIZE = 128
+API_CACHE_TTL_SECONDS = 60 * 60  # an hour
+
+# Create a TTLCache instance
+# This is the cache object that the @cached decorator will use.
+api_response_cache = TTLCache(maxsize=API_CACHE_MAX_SIZE, ttl=API_CACHE_TTL_SECONDS)
 
 
 def read_prompt(filename):
@@ -52,6 +53,11 @@ if not os.path.isdir(prompts_dir):
 
 prompts = {name: read_prompt(name) for name in ["ask", "summarize"]}
 app = Quart(__name__)
+
+
+@cached(cache=api_response_cache)
+def fetch_cached_transcript(video_id: str):
+    return fetch_transcript(video_id)
 
 
 async def fetch_transcript_with_retries(
@@ -82,31 +88,13 @@ async def fetch_transcript_with_retries(
             else:
                 logger.info(f"Fetching transcript for {video_id}")
 
-            transcript_list = await asyncio.to_thread(
-                YouTubeTranscriptApi.get_transcript, video_id
-            )
+            transcript_list = fetch_cached_transcript(video_id)
             logger.info(
                 f"Successfully fetched transcript for {video_id} on attempt {current_attempt_one_based}"
             )
             return transcript_list, None  # Success
 
-        except (TranscriptsDisabled, NoTranscriptFound) as e:
-            error_message = "Transcript not available for this video."
-            status_code = 404
-            if isinstance(e, NoTranscriptFound):
-                error_message = f"No transcript found for video {video_id}. It might be disabled or not generated yet."
-            elif isinstance(e, TranscriptsDisabled):
-                error_message = f"Transcripts are disabled for video {video_id}."
-
-            logger.warning(
-                f"Transcript not available for {video_id}: {error_message} (Attempt {current_attempt_one_based})"
-            )
-            error_event = f"event: error\ndata: {json.dumps({'error': error_message, 'status_code': status_code})}\n\n"
-            return None, error_event  # Definitive error, no more retries
-
-        except (
-            Exception
-        ) as e:  # Catch other (potentially intermittent) transcript fetching errors
+        except Exception as e:
             logger.warning(
                 f"Attempt {current_attempt_one_based}/{num_attempts_to_make} failed for {video_id}: {str(e)}"
             )

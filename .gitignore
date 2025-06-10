@@ -21,6 +21,7 @@ sdist/
 var/
 wheels/
 pip-wheel-req.txt
+.vscode/
 
 # PyCharm
 .idea/

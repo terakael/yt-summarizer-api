@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: yt-summarizer-api
-          image: docker.io/terakael/jqiwkz:20250606_06
+          image: docker.io/terakael/jqiwkz:20250610_05
           ports:
             - containerPort: 5000
           command: ["hypercorn"]
@@ -38,3 +38,8 @@ spec:
               value: https://llm.chutes.ai/v1
             - name: OPENAI_MODEL
               value: deepseek-ai/DeepSeek-V3-0324
+            - name: YOUTUBE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: youtube-api-key
+                  key: key
